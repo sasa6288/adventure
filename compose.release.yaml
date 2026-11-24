@@ -1,0 +1,58 @@
+services:
+  mysql:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: adventure
+      MYSQL_USER: ${DB_USERNAME:?required}
+      MYSQL_PASSWORD: ${DB_PASSWORD:?required}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?required}
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: [CMD-SHELL, 'mysqladmin ping -h localhost --silent']
+      interval: 10s
+      timeout: 5s
+      retries: 20
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: [redis-server, --appendonly, 'yes']
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: [CMD, redis-cli, ping]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+  app:
+    image: ${APP_IMAGE:?set published image including commit tag}
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SERVER_PORT: 8080
+      DB_URL: jdbc:mysql://mysql:3306/adventure?allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai
+      DB_USERNAME: ${DB_USERNAME:?required}
+      DB_PASSWORD: ${DB_PASSWORD:?required}
+      JWT_SECRET: ${JWT_SECRET:?required}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ''
+      VERIFICATION_EXPOSE_CODE: 'false'
+      OPENAPI_ENABLED: 'false'
+    ports:
+      - '127.0.0.1:${SERVER_PORT:-8080}:8080'
+    healthcheck:
+      test: [CMD-SHELL, 'wget -S -O /dev/null http://127.0.0.1:8080/api/quests 2>&1 | grep -q "HTTP/1.1 401"']
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
+volumes:
+  mysql-data:
+  redis-data:
