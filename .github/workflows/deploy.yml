@@ -1,0 +1,33 @@
+name: Deploy
+on:
+  workflow_dispatch:
+    inputs:
+      commit:
+        description: Full 40-character commit SHA of a successfully published image
+        required: true
+        type: string
+permissions:
+  contents: read
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Deploy published image
+        env:
+          COMMIT: ${{ inputs.commit }}
+          REPOSITORY: ${{ github.repository }}
+          HOST: ${{ secrets.SERVER_HOST }}
+          USER: ${{ secrets.SERVER_USER }}
+          KEY: ${{ secrets.SERVER_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.SERVER_KNOWN_HOSTS }}
+        run: |
+          set -eu
+          echo "$COMMIT" | grep -Eq '^[a-f0-9]{40}$'
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          IMAGE="ghcr.io/${REPOSITORY,,}:$COMMIT"
+          ssh -i ~/.ssh/deploy_key -o BatchMode=yes "$USER@$HOST" "cd /opt/adventure && APP_IMAGE='$IMAGE' docker compose -f compose.release.yaml pull app && APP_IMAGE='$IMAGE' docker compose -f compose.release.yaml up -d --wait --wait-timeout 180"
