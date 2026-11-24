@@ -1,0 +1,57 @@
+spring:
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: 2s
+  application:
+    name: adventure
+  profiles:
+    default: dev
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      connection-timeout: 30000
+      maximum-pool-size: ${DB_POOL_SIZE:10}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: false
+    validate-on-migrate: true
+
+server:
+  port: ${SERVER_PORT:8080}
+  shutdown: graceful
+  error:
+    include-message: never
+    include-stacktrace: never
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method
+    tags-sorter: alpha
+
+logging:
+  file:
+    name: ${LOG_FILE:logs/adventure.log}
+  level:
+    root: INFO
+    com.example.adventure: ${APP_LOG_LEVEL:INFO}
+
+app:
+  verification:
+    expose-code: ${VERIFICATION_EXPOSE_CODE:false}
+  jwt:
+    secret: ${JWT_SECRET:change-this-development-secret-to-at-least-32-characters}
+    expiration-seconds: ${JWT_EXPIRATION_SECONDS:86400}
